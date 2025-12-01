@@ -18,7 +18,6 @@ zinit light "kisaragi-hiu/k-gnome-l10n"
 This requires Git.
 
 ** Usage
-
 *** Main commands
 
 #+begin_src sh
@@ -58,3 +57,53 @@ k-gnome-l10n get-module <module>
 #+end_src
 
 Show the module data as from the API, as well as which branch this tool guesses to be its default.
+
+** Workflow
+
+This is the workflow that /I think/ works best for me. I'm just using [[https://apps.kde.org/lokalize/][Lokalize]] here.
+
+*** For committers
+
+Everything for translators applies, but this tool doesn't have anything that helps automate the job for committers since I'm not a committer.
+
+*** For reviewers
+
+Everything for translators applies. I imagine it's probably helpful to have a local copy of all translations during review as well.
+
+*** For translators
+
+Let's say you're a Taiwanese Mandarin translator. You can figure out the language code by using =k-gnome-l10n get-languages=. Let's say you also want Japanese translations to be available for reference.
+
+**** Initialize the workspace
+
+#+begin_src sh
+k-gnome-l10n init gnome-translations --langs zh_TW,ja
+cd gnome-translations
+#+end_src
+
+Now fill in the Lokalize project =zh_TW/index.lokalize= (you can ignore the one you don't use), either in Lokalize or in a text editor.
+
+- AltDir: the directory of translation files used for reference. Unfortunately Lokalize only supports setting one alternative.
+- MailingList and the ProjLangTeam fields: check the Language-Team field in an already translated PO file for what this probably should be. Lokalize uses this to write the Language-Team field in PO files. If this is wrong you can also just correct it manually before submission.
+- BranchDir: this project currently assumes translating just the default branch, so these can be skipped.
+
+Then open Lokalize → Open Project, and choose this file.
+
+**** Translate and local review
+
+Translate away in Lokalize.
+
+This project sets up a local Git repository to help diff between before and after translating.
+
+**** Submission
+
+Use Git to find which files you've modified, then go find the page for the module in your language. The first branch on the page seems to be the default branch. Then submit it there for others to review.
+
+**** Pulling new translations
+
+#+begin_src sh
+cd gnome-translations
+k-gnome-l10n update
+#+end_src
+
+This will pull translations from the server. *This will also overwrite existing files, including existing translations, instead of doing a conflict resolution step like SVN or Git does*. This is a quirk of this quick tool.
