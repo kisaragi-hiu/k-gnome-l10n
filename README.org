@@ -1,0 +1,27 @@
+* k-gnome-l10n
+
+My personal tools for working with GNOME translation.
+
+The goal is to have all translation files for a particular language available in one place so that they can be searched through locally.
+
+** Setup
+
+I'll write this with Deno like <https://github.com/kisaragi-hiu/k-kdesvn>.
+
+** Usage
+
+#+begin_src sh
+k-gnome-l10n init [dir] --langs zh_TW,ja
+#+end_src
+
+Set up a “translation workspace” at [dir] that contains the translations and templates for all modules in the languages zh_TW and ja.
+
+#+begin_src sh
+k-gnome-l10n update
+#+end_src
+
+Update a “translation workspace” at the current directory, which means downloading each language and templates for all modules again. The current language list is remembered in the file =languages=.
+
+#+begin_src sh
+k-gnome-l10n add-language <language>
+#+end_src

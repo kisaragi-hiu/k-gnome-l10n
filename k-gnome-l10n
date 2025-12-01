@@ -57,9 +57,10 @@ async function update(languages: string[]) {
   }
 }
 
-// gnome-translations/<lang>/<module>.po
-// gnome-translations/stable.<lang>/<module>.po
-// gnome-translations/templates/<module>.pot
+// gnome-translations/<lang>/{po,help}/<module>.po
+// gnome-translations/templates/{po,help}/<module>.pot
+//
+// Maybe: gnome-translations/stable.<lang>/<module>.po
 program
   .command("init")
   .description("Initialize a translation workspace")
@@ -87,15 +88,51 @@ program
 
     await mkdir(dir, { recursive: true });
     process.chdir(dir);
-    await write(
-      "languages",
-      JSON.stringify({
-        "k-gnome-l10n-//":
-          "This file keeps track of which languages are checked out in this workspace.",
-        languages: languages,
-      }),
-    );
+
+    assert(new Set(languages).isSubsetOf(new Set(await getLanguages())));
+    await writeLanguagesFile(languages);
     await update(languages);
+  });
+
+/** Write `languages` into the languages file in the current directory. */
+async function writeLanguagesFile(languages: string[]) {
+  await write(
+    "languages",
+    JSON.stringify({
+      "k-gnome-l10n-//":
+        "This file keeps track of which languages are checked out in this workspace.",
+      languages: languages,
+    }),
+  );
+}
+
+program
+  .command("add-language")
+  .description(
+    `Add a language to the current workspace.
+This will redownload everything in the workspace.`,
+  )
+  .argument("<lang>", "New language to add")
+  .action(async (newLang) => {
+    assert((await getLanguages()).includes(newLang));
+    try {
+      const languages = z
+        .object({ languages: z.array(z.string()) })
+        .parse(
+          JSON.parse(readFileSync("languages", { encoding: "utf-8" })),
+        ).languages;
+      if (languages.includes(newLang)) {
+        console.log(`${newLang} is already present`);
+      } else {
+        languages.push(newLang);
+        await writeLanguagesFile(languages);
+        await update(languages);
+      }
+    } catch (_e) {
+      console.log(
+        "Unable to read file declaring currently checked out languages",
+      );
+    }
   });
 
 program
