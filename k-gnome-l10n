@@ -3,7 +3,9 @@
 /** Commands for managing a local kdesvn repository checkout. */
 // vim: ft=typescript
 
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
+import { writeFileSync, existsSync, readFileSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import assert from "node:assert/strict";
 import * as process from "node:process";
 
@@ -71,7 +73,7 @@ program
       process.exit(1);
     }
 
-    mkdirSync(dir, { recursive: true });
+    await mkdir(dir, { recursive: true });
     process.chdir(dir);
     writeFileSync(
       "languages",
