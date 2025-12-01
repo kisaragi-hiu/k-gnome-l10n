@@ -10,6 +10,8 @@ I'll write this with Deno like <https://github.com/kisaragi-hiu/k-kdesvn>.
 
 ** Usage
 
+*** Main commands
+
 #+begin_src sh
 k-gnome-l10n init [dir] --langs zh_TW,ja
 #+end_src
@@ -25,3 +27,25 @@ Update a “translation workspace” at the current directory, which means downl
 #+begin_src sh
 k-gnome-l10n add-language <language>
 #+end_src
+
+Add a language to the current workspace.
+
+*** More debug-y commands
+
+#+begin_src sh
+k-gnome-l10n get-languages
+#+end_src
+
+Show the list of languages, including their codes and names.
+
+#+begin_src sh
+k-gnome-l10n get-modules
+#+end_src
+
+Show a list of all module names.
+
+#+begin_src sh
+k-gnome-l10n get-module <module>
+#+end_src
+
+Show the module data as from the API, as well as which branch this tool guesses to be its default.

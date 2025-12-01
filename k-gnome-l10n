@@ -37,7 +37,7 @@ program.description(
  * Include templates if `opts.templates` is true.
  */
 async function update(languages: string[]) {
-  assert(new Set(languages).isSubsetOf(new Set(await getLanguages())));
+  assert(new Set(languages).isSubsetOf(new Set(await getLanguageCodes())));
   const domain = "po";
   const modules = await getModules();
   const len = modules.length;
@@ -89,7 +89,7 @@ program
     await mkdir(dir, { recursive: true });
     process.chdir(dir);
 
-    assert(new Set(languages).isSubsetOf(new Set(await getLanguages())));
+    assert(new Set(languages).isSubsetOf(new Set(await getLanguageCodes())));
     await writeLanguagesFile(languages);
     await update(languages);
   });
@@ -114,7 +114,7 @@ This will redownload everything in the workspace.`,
   )
   .argument("<lang>", "New language to add")
   .action(async (newLang) => {
-    assert((await getLanguages()).includes(newLang));
+    assert((await getLanguageCodes()).includes(newLang));
     try {
       const languages = z
         .object({ languages: z.array(z.string()) })
@@ -183,15 +183,18 @@ async function getModule(module: string) {
   );
   return Module.parse(JSON.parse(text));
 }
-/** Return list of all language codes. */
+/** Return list of all languages with their names and codes. */
 async function getLanguages() {
   const text = await cached(`gnome-languages`, () =>
     fetch(`https://l10n.gnome.org/api/v1/languages/`, { headers }),
   );
   return z
     .array(z.object({ name: z.string(), locale: z.string() }))
-    .parse(JSON.parse(text))
-    .map((x) => x.locale);
+    .parse(JSON.parse(text));
+}
+/** Return list of all language codes. */
+async function getLanguageCodes() {
+  return (await getLanguages()).map((x) => x.locale);
 }
 async function moduleDefaultBranch(module: string) {
   return (await getModule(module)).branches[0]?.name;
@@ -208,7 +211,7 @@ async function downloadModule(
   domain: "po" | "help" = "po",
 ) {
   assert((await getModules()).includes(module));
-  assert((await getLanguages()).includes(language));
+  assert((await getLanguageCodes()).includes(language));
   const branch = await moduleDefaultBranch(module);
   assert(branch);
 
@@ -246,6 +249,16 @@ async function downloadModuleTemplate(
   write(`templates/${domain}/${module}.pot`, res);
 }
 
+program
+  .command("get-languages")
+  .description("Show language list")
+  .action(async () => {
+    for (const language of (await getLanguages()).sort((a, b) =>
+      a.locale < b.locale ? -1 : 1,
+    )) {
+      console.log(`${language.locale}: ${language.name}`);
+    }
+  });
 program
   .command("get-modules")
   .description("Show module list")
