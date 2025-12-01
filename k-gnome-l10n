@@ -213,6 +213,15 @@ program
     }
   });
 
+program
+  .command("open")
+  .description("Open the module's page on DL")
+  .argument("<module>", "The module name")
+  .action(async (module) => {
+    assert((await getModules()).includes(module));
+    await $`xdg-open https://l10n.gnome.org/module/${module}/`;
+  });
+
 const Modules = z.array(z.object({ name: z.string(), href: z.string() }));
 /** Return a list of all module names. */
 async function getModules() {
