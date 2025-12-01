@@ -32,6 +32,30 @@ program.description(
   `Commands for managing a local copy of GNOME translations.`,
 );
 
+/** Set up Lokalize project for `language`. */
+async function initLokalize(language: string) {
+  const languageObj = (await getLanguages()).find(
+    ({ locale }) => locale === language,
+  );
+  assert(languageObj);
+  await write(
+    `${language}/index.lokalize`,
+    `
+[General]
+AltDir=../REFERENCE_LANGUAGE
+# BranchDir=../STABLE_TARGET
+LangCode=${language}
+LanguageSource=Project
+PotBaseDir=../templates
+# PotBranchDir=../STABLE_TEMPLATES
+MailingList=MAILING_LIST
+ProjLangTeam=${languageObj.name} <MAILING_LIST>
+ProjectID=gnome-translation-${language}
+TargetLangCode=${language}
+`.trim(),
+  );
+}
+
 /**
  * Download files for `languages`.
  * `existing` decides how to deal with existing files:
@@ -49,11 +73,11 @@ async function update(
   const modules = await getModules();
   const len = modules.length;
   if (existing === "delete") {
-    // Delete existing files
+    // Delete existing translation files
     for (const lang of languages) {
-      await rm(lang, { recursive: true });
+      await rm(`${lang}/${domain}`, { recursive: true, force: true });
     }
-    await rm("templates", { recursive: true });
+    await rm(`templates/${domain}`, { recursive: true, force: true });
   }
   for (let i = 0; i < len; i++) {
     const module = modules[i];
@@ -112,7 +136,13 @@ program
     assert(new Set(languages).isSubsetOf(new Set(await getLanguageCodes())));
     await writeLanguagesFile(languages);
     await update(languages);
+    for (const lang of languages) {
+      await initLokalize(lang);
+    }
     await $`git init && git add . && git commit -m before`;
+    console.log(
+      `Initialized workspace at ${dir}. Remember to fill in Lokalize info`,
+    );
   });
 
 /** Write `languages` into the languages file in the current directory. */
@@ -148,7 +178,9 @@ This will redownload everything in the workspace.`,
         languages.push(newLang);
         await writeLanguagesFile(languages);
         await update(languages, "skip");
+        await initLokalize(newLang);
         await $`git add . && git commit -m before`;
+        console.log(`Added ${newLang}. Remember to fill in Lokalize info`);
       }
     } catch (_e) {
       console.log(
