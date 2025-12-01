@@ -3,7 +3,7 @@
 /** Commands for managing a local kdesvn repository checkout. */
 // vim: ft=typescript
 
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import * as process from "node:process";
 
@@ -22,7 +22,7 @@ program.description(
  * Download files for `languages`.
  * Include templates if `opts.templates` is true.
  */
-async function update(languages: string[], opts?: { templates: boolean }) {
+async function update(languages: string[]) {
   assert(new Set(languages).isSubsetOf(new Set(await getLanguages())));
   const domain = "po";
   const modules = await getModules();
@@ -36,12 +36,10 @@ async function update(languages: string[], opts?: { templates: boolean }) {
       );
       await downloadModule(module, lang);
     }
-    if (opts?.templates) {
-      console.log(
-        `Downloading templates/${domain}/${module} (${i + 1}/${len})...`,
-      );
-      await downloadModuleTemplate(module);
-    }
+    console.log(
+      `Downloading templates/${domain}/${module} (${i + 1}/${len})...`,
+    );
+    await downloadModuleTemplate(module);
   }
 }
 
@@ -75,7 +73,33 @@ program
 
     mkdirSync(dir, { recursive: true });
     process.chdir(dir);
-    update(languages, { templates: true });
+    writeFileSync(
+      "languages",
+      JSON.stringify({
+        "k-gnome-l10n-//":
+          "This file keeps track of which languages are checked out in this workspace.",
+        languages: languages,
+      }),
+    );
+    await update(languages);
+  });
+
+program
+  .command("update")
+  .description("Pull down new translations to the current workspace")
+  .action(async () => {
+    try {
+      const languages = z
+        .object({ languages: z.array(z.string()) })
+        .parse(
+          JSON.parse(readFileSync("languages", { encoding: "utf-8" })),
+        ).languages;
+      await update(languages);
+    } catch (_e) {
+      console.log(
+        "Unable to read file declaring currently checked out languages",
+      );
+    }
   });
 
 const Modules = z.array(z.object({ name: z.string(), href: z.string() }));
