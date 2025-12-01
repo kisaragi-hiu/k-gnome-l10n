@@ -3,31 +3,47 @@
 /** Commands for managing a local kdesvn repository checkout. */
 // vim: ft=typescript
 
-import {
-  mkdirSync,
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  symlinkSync,
-} from "node:fs";
-import { strict as assert } from "node:assert";
-import { spawn } from "node:child_process";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import assert from "node:assert/strict";
 import * as process from "node:process";
-import path from "node:path";
 
 import { cached } from "npm:@kisaragi-hiu/cached-fetch@0.2.0";
 import { Chalk } from "npm:chalk@5.6.2";
-import { program, Option } from "npm:@commander-js/extra-typings@14.0.0";
+import { program } from "npm:@commander-js/extra-typings@14.0.0";
 import { z } from "npm:zod@4.1.11";
 
 const headers = { "User-Agent": "github:kisaragi-hiu/k-gnome-l10n" };
 
-const chalk = new Chalk();
-import { link } from "npm:ansi-escapes@7.1.1";
-
 program.description(
   `Commands for managing a local copy of GNOME translations.`,
 );
+
+/**
+ * Download files for `languages`.
+ * Include templates if `opts.templates` is true.
+ */
+async function update(languages: string[], opts?: { templates: boolean }) {
+  assert(new Set(languages).isSubsetOf(new Set(await getLanguages())));
+  const domain = "po";
+  const modules = await getModules();
+  const len = modules.length;
+  for (let i = 0; i < len; i++) {
+    const module = modules[i];
+    assert(module);
+    for (const lang of languages) {
+      console.log(
+        `Downloading ${lang}/${domain}/${module} (${i + 1}/${len})...`,
+      );
+      await downloadModule(module, lang);
+    }
+    if (opts?.templates) {
+      console.log(
+        `Downloading templates/${domain}/${module} (${i + 1}/${len})...`,
+      );
+      await downloadModuleTemplate(module);
+    }
+  }
+}
 
 // gnome-translations/<lang>/<module>.po
 // gnome-translations/stable.<lang>/<module>.po
@@ -44,7 +60,7 @@ program
     "--langs <languages>",
     "Set up for these languages, as language codes. Comma-separated.",
   )
-  .action((dir, opts) => {
+  .action(async (dir, opts) => {
     const languages = opts.langs
       ? opts.langs.split(",").map((x) => x.trim())
       : [];
@@ -56,7 +72,10 @@ program
       console.log(`${dir} already exists.`);
       process.exit(1);
     }
-    return;
+
+    mkdirSync(dir, { recursive: true });
+    process.chdir(dir);
+    update(languages, { templates: true });
   });
 
 const Modules = z.array(z.object({ name: z.string(), href: z.string() }));
@@ -104,10 +123,15 @@ async function moduleDefaultBranch(module: string) {
 }
 
 /**
- * Download PO file for `module` in `language`.
+ * Download PO file for `module` in `language` to the right place under CWD.
  * This always downloads file for the default branch of the module.
+ * `domain` specifies the domain, either "po" (UI) or "help" (docs).
  */
-async function downloadModule(module: string, language: string) {
+async function downloadModule(
+  module: string,
+  language: string,
+  domain: "po" | "help" = "po",
+) {
   assert((await getModules()).includes(module));
   assert((await getLanguages()).includes(language));
   const branch = await moduleDefaultBranch(module);
@@ -115,16 +139,29 @@ async function downloadModule(module: string, language: string) {
 
   // eg. https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.zh_TW.po
   const res = await fetch(
-    `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.${language}.po`,
+    // For UI: https://l10n.gnome.org/POT/epiphany.main/epiphany.main.zh_TW.po
+    // For help: https://l10n.gnome.org/module/po/epiphany/main/help/zh_TW.po
+    domain === "po"
+      ? `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.${language}.po`
+      : `https://l10n.gnome.org/module/po/${module}/${branch}/help/${language}.po`,
     { headers },
   );
   writeFileSync(
-    `${language}/${module}.po`,
+    // like zh_TW/po/epiphany.po or ja/help/epiphany.po
+    `${language}/${domain}/${module}.po`,
     new Uint8Array(await res.arrayBuffer()),
   );
 }
 
-async function downloadModuleTemplate(module: string) {
+/**
+ * Download template file for `module` to the right place under CWD.
+ * This always downloads file for the default branch of the module.
+ * `domain` specifies the domain, either "po" (UI) or "help" (docs).
+ */
+async function downloadModuleTemplate(
+  module: string,
+  domain: "po" | "help" = "po",
+) {
   assert((await getModules()).includes(module));
   const branch = await moduleDefaultBranch(module);
   assert(branch);
@@ -135,7 +172,7 @@ async function downloadModuleTemplate(module: string) {
     { headers },
   );
   writeFileSync(
-    `templates/${module}.pot`,
+    `templates/${domain}/${module}.pot`,
     new Uint8Array(await res.arrayBuffer()),
   );
 }
