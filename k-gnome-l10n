@@ -3,8 +3,8 @@
 /** Commands for managing a local kdesvn repository checkout. */
 // vim: ft=typescript
 
-import { writeFileSync, existsSync, readFileSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
+import { writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import assert from "node:assert/strict";
 import * as process from "node:process";
@@ -15,6 +15,18 @@ import { program } from "npm:@commander-js/extra-typings@14.0.0";
 import { z } from "npm:zod@4.1.11";
 
 const headers = { "User-Agent": "github:kisaragi-hiu/k-gnome-l10n" };
+
+/**
+ * Write a response or string to `path`.
+ * This wrapper also makes sure the directory to `path` exists.
+ */
+async function write(path: string, res: Response | string) {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(
+    path,
+    typeof res === "string" ? res : new Uint8Array(await res.arrayBuffer()),
+  );
+}
 
 program.description(
   `Commands for managing a local copy of GNOME translations.`,
@@ -75,7 +87,7 @@ program
 
     await mkdir(dir, { recursive: true });
     process.chdir(dir);
-    writeFileSync(
+    await write(
       "languages",
       JSON.stringify({
         "k-gnome-l10n-//":
@@ -172,11 +184,8 @@ async function downloadModule(
       : `https://l10n.gnome.org/module/po/${module}/${branch}/help/${language}.po`,
     { headers },
   );
-  writeFileSync(
-    // like zh_TW/po/epiphany.po or ja/help/epiphany.po
-    `${language}/${domain}/${module}.po`,
-    new Uint8Array(await res.arrayBuffer()),
-  );
+  // like zh_TW/po/epiphany.po or ja/help/epiphany.po
+  write(`${language}/${domain}/${module}.po`, res);
 }
 
 /**
@@ -197,10 +206,7 @@ async function downloadModuleTemplate(
     `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.pot`,
     { headers },
   );
-  writeFileSync(
-    `templates/${domain}/${module}.pot`,
-    new Uint8Array(await res.arrayBuffer()),
-  );
+  write(`templates/${domain}/${module}.pot`, res);
 }
 
 program
