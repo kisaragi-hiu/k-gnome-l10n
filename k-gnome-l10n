@@ -10,12 +10,157 @@ import {
   existsSync,
   symlinkSync,
 } from "node:fs";
+import { strict as assert } from "node:assert";
 import { spawn } from "node:child_process";
 import * as process from "node:process";
 import path from "node:path";
 
+import { cached } from "npm:@kisaragi-hiu/cached-fetch@0.2.0";
 import { Chalk } from "npm:chalk@5.6.2";
 import { program, Option } from "npm:@commander-js/extra-typings@14.0.0";
+import { z } from "npm:zod@4.1.11";
+
+const headers = { "User-Agent": "github:kisaragi-hiu/k-gnome-l10n" };
 
 const chalk = new Chalk();
 import { link } from "npm:ansi-escapes@7.1.1";
+
+program.description(
+  `Commands for managing a local copy of GNOME translations.`,
+);
+
+// gnome-translations/<lang>/<module>.po
+// gnome-translations/stable.<lang>/<module>.po
+// gnome-translations/templates/<module>.pot
+program
+  .command("init")
+  .description("Initialize a translation workspace")
+  .argument(
+    "[dir]",
+    "Where to put the translation workspace, defaults to 'gnome-translations'",
+    "gnome-translations",
+  )
+  .option(
+    "--langs <languages>",
+    "Set up for these languages, as language codes. Comma-separated.",
+  )
+  .action((dir, opts) => {
+    const languages = opts.langs
+      ? opts.langs.split(",").map((x) => x.trim())
+      : [];
+    if (languages.length < 1) {
+      console.log(`Please specify one or more languages with --langs`);
+      process.exit(1);
+    }
+    if (existsSync(dir)) {
+      console.log(`${dir} already exists.`);
+      process.exit(1);
+    }
+    return;
+  });
+
+const Modules = z.array(z.object({ name: z.string(), href: z.string() }));
+/** Return a list of all module names. */
+async function getModules() {
+  const text = await cached("gnome-modules", () =>
+    fetch("https://l10n.gnome.org/api/v1/modules/", { headers }),
+  );
+  return Modules.parse(JSON.parse(text)).map((x) => x.name);
+}
+
+const Module = z.object({
+  name: z.string(),
+  vcs_web: z.string(),
+  maintainers: z.array(z.string()),
+  branches: z.array(z.object({ name: z.string() })),
+  domains: z.array(
+    z.object({
+      name: z.string(),
+      description: z.string(),
+      dtype: z.enum(["doc", "ui"]),
+      layout: z.string(),
+    }),
+  ),
+});
+async function getModule(module: string) {
+  // TODO check if module is a valid module
+  const text = await cached(`gnome-module-${module}`, () =>
+    fetch(`https://l10n.gnome.org/api/v1/modules/${module}`, { headers }),
+  );
+  return Module.parse(JSON.parse(text));
+}
+/** Return list of all language codes. */
+async function getLanguages() {
+  const text = await cached(`gnome-languages`, () =>
+    fetch(`https://l10n.gnome.org/api/v1/languages/`, { headers }),
+  );
+  return z
+    .array(z.object({ name: z.string(), locale: z.string() }))
+    .parse(JSON.parse(text))
+    .map((x) => x.locale);
+}
+async function moduleDefaultBranch(module: string) {
+  return (await getModule(module)).branches[0]?.name;
+}
+
+/**
+ * Download PO file for `module` in `language`.
+ * This always downloads file for the default branch of the module.
+ */
+async function downloadModule(module: string, language: string) {
+  assert((await getModules()).includes(module));
+  assert((await getLanguages()).includes(language));
+  const branch = await moduleDefaultBranch(module);
+  assert(branch);
+
+  // eg. https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.zh_TW.po
+  const res = await fetch(
+    `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.${language}.po`,
+    { headers },
+  );
+  writeFileSync(
+    `${language}/${module}.po`,
+    new Uint8Array(await res.arrayBuffer()),
+  );
+}
+
+async function downloadModuleTemplate(module: string) {
+  assert((await getModules()).includes(module));
+  const branch = await moduleDefaultBranch(module);
+  assert(branch);
+
+  // eg. https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.pot
+  const res = await fetch(
+    `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.pot`,
+    { headers },
+  );
+  writeFileSync(
+    `templates/${module}.pot`,
+    new Uint8Array(await res.arrayBuffer()),
+  );
+}
+
+program
+  .command("get-modules")
+  .description("Show module list")
+  .action(async () => {
+    for (const module of await getModules()) {
+      console.log(module);
+    }
+  });
+program
+  .command("get-module")
+  .description("Get data about a module")
+  .argument("<module>", "Module name")
+  .action(async (module) => {
+    console.log(`Default branch: ${await moduleDefaultBranch(module)}`);
+    console.log("Other data:");
+    console.log(await getModule(module));
+  });
+
+// Ignore top level errors
+// If we pipe output to less then quit it without viewing the whole
+// thing, the pager doesn't consume the entire pipe, which leads to a
+// BrokenPipe error.
+// This is the overkill but fast way to get rid of it.
+program.parseAsync().catch(() => {});
