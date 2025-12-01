@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import * as process from "node:process";
 
 import { cached } from "npm:@kisaragi-hiu/cached-fetch@0.2.0";
-import { Chalk } from "npm:chalk@5.6.2";
+import { $ } from "npm:zx@8.8.5";
 import { program } from "npm:@commander-js/extra-typings@14.0.0";
 import { z } from "npm:zod@4.1.11";
 
@@ -92,6 +92,7 @@ program
     assert(new Set(languages).isSubsetOf(new Set(await getLanguageCodes())));
     await writeLanguagesFile(languages);
     await update(languages);
+    await $`git init && git add . && git commit -m before`;
   });
 
 /** Write `languages` into the languages file in the current directory. */
@@ -127,6 +128,7 @@ This will redownload everything in the workspace.`,
         languages.push(newLang);
         await writeLanguagesFile(languages);
         await update(languages);
+        await $`git add . && git commit -m before`;
       }
     } catch (_e) {
       console.log(
@@ -146,6 +148,7 @@ program
           JSON.parse(readFileSync("languages", { encoding: "utf-8" })),
         ).languages;
       await update(languages);
+      await $`git add . && git commit -m before`;
     } catch (_e) {
       console.log(
         "Unable to read file declaring currently checked out languages",
