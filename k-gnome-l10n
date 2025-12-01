@@ -55,6 +55,7 @@ TargetLangCode=${language}
 
 [RegExps]
 Accel=_
+Markup=(<[^>]+>)+|(&[A-Za-z_:][A-Za-z0-9_\\\\.:-]*;|%[a-z]|%[0-9](\\\\$[a-z])?)+
 `.trim(),
   );
 }
