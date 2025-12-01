@@ -4,7 +4,7 @@
 // vim: ft=typescript
 
 import { existsSync, readFileSync } from "node:fs";
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, rmdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import assert from "node:assert/strict";
 import * as process from "node:process";
@@ -34,13 +34,20 @@ program.description(
 
 /**
  * Download files for `languages`.
- * Include templates if `opts.templates` is true.
+ * Delete existing files if `del` is true.
  */
-async function update(languages: string[]) {
+async function update(languages: string[], del?: boolean) {
   assert(new Set(languages).isSubsetOf(new Set(await getLanguageCodes())));
   const domain = "po";
   const modules = await getModules();
   const len = modules.length;
+  if (del) {
+    // Delete existing files
+    for (const lang of languages) {
+      await rmdir(lang);
+    }
+    await rmdir("templates");
+  }
   for (let i = 0; i < len; i++) {
     const module = modules[i];
     assert(module);
@@ -140,14 +147,15 @@ This will redownload everything in the workspace.`,
 program
   .command("update")
   .description("Pull down new translations to the current workspace")
-  .action(async () => {
+  .option("--delete", "Delete existing files before downloading again")
+  .action(async (opts) => {
     try {
       const languages = z
         .object({ languages: z.array(z.string()) })
         .parse(
           JSON.parse(readFileSync("languages", { encoding: "utf-8" })),
         ).languages;
-      await update(languages);
+      await update(languages, opts.delete);
       await $`git add . && git commit -m before`;
     } catch (_e) {
       console.log(
