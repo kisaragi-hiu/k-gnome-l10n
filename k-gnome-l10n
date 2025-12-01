@@ -34,14 +34,21 @@ program.description(
 
 /**
  * Download files for `languages`.
- * Delete existing files if `del` is true.
+ * `existing` decides how to deal with existing files:
+ * - use "delete" to delete them
+ * - use "skip" to skip downloading them
+ * - use "overwrite" (default) to overwrite them. If a file is deleted on the
+ *   server for some reason, this will leave stale files around.
  */
-async function update(languages: string[], del?: boolean) {
+async function update(
+  languages: string[],
+  existing: "delete" | "skip" | "overwrite" = "overwrite",
+) {
   assert(new Set(languages).isSubsetOf(new Set(await getLanguageCodes())));
   const domain = "po";
   const modules = await getModules();
   const len = modules.length;
-  if (del) {
+  if (existing === "delete") {
     // Delete existing files
     for (const lang of languages) {
       await rm(lang, { recursive: true });
@@ -52,10 +59,16 @@ async function update(languages: string[], del?: boolean) {
     const module = modules[i];
     assert(module);
     for (const lang of languages) {
+      if (existing === "skip" && existsSync(`${lang}/${domain}/${module}.po`)) {
+        continue;
+      }
       console.log(
         `Downloading ${lang}/${domain}/${module} (${i + 1}/${len})...`,
       );
       await downloadModule(module, lang);
+    }
+    if (existing === "skip" && existsSync(`templates/${domain}/${module}.po`)) {
+      continue;
     }
     console.log(
       `Downloading templates/${domain}/${module} (${i + 1}/${len})...`,
@@ -134,7 +147,7 @@ This will redownload everything in the workspace.`,
       } else {
         languages.push(newLang);
         await writeLanguagesFile(languages);
-        await update(languages);
+        await update(languages, "skip");
         await $`git add . && git commit -m before`;
       }
     } catch (_e) {
@@ -155,7 +168,7 @@ program
         .parse(
           JSON.parse(readFileSync("languages", { encoding: "utf-8" })),
         ).languages;
-      await update(languages, opts.delete);
+      await update(languages, opts.delete && "delete");
       await $`git add . && git commit -m before`;
     } catch (_e) {
       console.log(
