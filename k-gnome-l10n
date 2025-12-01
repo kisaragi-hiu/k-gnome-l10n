@@ -249,7 +249,15 @@ async function getLanguages() {
     fetch(`https://l10n.gnome.org/api/v1/languages/`, { headers }),
   );
   return z
-    .array(z.object({ name: z.string(), locale: z.string() }))
+    .array(
+      z.object({
+        name: z.string(),
+        locale: z.string(),
+        team__description: z.string().nullable(),
+        plurals: z.optional(z.string()),
+        href: z.optional(z.string()),
+      }),
+    )
     .parse(JSON.parse(text));
 }
 /** Return list of all language codes. */
@@ -334,6 +342,17 @@ program
       a.locale < b.locale ? -1 : 1,
     )) {
       console.log(`${language.locale}: ${language.name}`);
+    }
+  });
+program
+  .command("get-language")
+  .description("Get info about a language")
+  .argument("<language>", "Language code")
+  .action(async (language) => {
+    const languages = await getLanguages();
+    const obj = languages.find((x) => x.locale === language);
+    if (obj) {
+      console.log(obj);
     }
   });
 program

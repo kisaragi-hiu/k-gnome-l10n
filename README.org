@@ -47,6 +47,12 @@ k-gnome-l10n get-languages
 Show the list of languages, including their codes and names.
 
 #+begin_src sh
+k-gnome-l10n get-language <language>
+#+end_src
+
+Show info about a language code.
+
+#+begin_src sh
 k-gnome-l10n get-modules
 #+end_src
 
