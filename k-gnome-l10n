@@ -52,6 +52,9 @@ MailingList=MAILING_LIST
 ProjLangTeam=${languageObj.name} <MAILING_LIST>
 ProjectID=gnome-translation-${language}
 TargetLangCode=${language}
+
+[RegExps]
+Accel=_
 `.trim(),
   );
 }
