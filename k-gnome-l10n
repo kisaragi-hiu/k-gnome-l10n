@@ -1,0 +1,21 @@
+#!/usr/bin/env -S deno run -A
+// -*- mode: typescript; -*-
+/** Commands for managing a local kdesvn repository checkout. */
+// vim: ft=typescript
+
+import {
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  symlinkSync,
+} from "node:fs";
+import { spawn } from "node:child_process";
+import * as process from "node:process";
+import path from "node:path";
+
+import { Chalk } from "npm:chalk@5.6.2";
+import { program, Option } from "npm:@commander-js/extra-typings@14.0.0";
+
+const chalk = new Chalk();
+import { link } from "npm:ansi-escapes@7.1.1";
