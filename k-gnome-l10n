@@ -221,12 +221,22 @@ async function downloadModule(
   // eg. https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.zh_TW.po
   const res = await fetch(
     // For UI: https://l10n.gnome.org/POT/epiphany.main/epiphany.main.zh_TW.po
-    // For help: https://l10n.gnome.org/module/po/epiphany/main/help/zh_TW.po
+    // For help: https://l10n.gnome.org/POT/brasero.master/docs/brasero-help.master.zh_TW.po
+    //
+    // If the current translation is empty, templates that are set up beforehand
+    // are also available from eg.
+    // UI: https://l10n.gnome.org/module/po/epiphany/main/po/zh_TW.po
+    // or help: https://l10n.gnome.org/module/po/epiphany/main/help/zh_TW.po
+    // ...but I don't think we want this. Lokalize can handle creation just fine.
     domain === "po"
       ? `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.${language}.po`
-      : `https://l10n.gnome.org/module/po/${module}/${branch}/help/${language}.po`,
+      : `https://l10n.gnome.org/POT/${module}.${branch}/docs/${module}-help.${branch}.${language}.po`,
     { headers },
   );
+  if (res.status === 404) {
+    console.log(`Downloading ${language}/${domain}/${module} returned 404`);
+    return;
+  }
   // like zh_TW/po/epiphany.po or ja/help/epiphany.po
   write(`${language}/${domain}/${module}.po`, res);
 }
@@ -244,11 +254,18 @@ async function downloadModuleTemplate(
   const branch = await moduleDefaultBranch(module);
   assert(branch);
 
-  // eg. https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.pot
+  // For UI: https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.pot
+  // For help: https://l10n.gnome.org/POT/brasero.master/docs/brasero-help.master.pot
   const res = await fetch(
-    `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.pot`,
+    domain === "po"
+      ? `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.pot`
+      : `https://l10n.gnome.org/POT/${module}.${branch}/docs/${module}-help.${branch}.pot`,
     { headers },
   );
+  if (res.status === 404) {
+    console.log(`Downloading templates/${domain}/${module} returned 404`);
+    return;
+  }
   write(`templates/${domain}/${module}.pot`, res);
 }
 
