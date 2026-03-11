@@ -293,22 +293,32 @@ async function downloadModule(
   assert(branch);
 
   // eg. https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.zh_TW.po
-  const res = await fetch(
-    // For UI: https://l10n.gnome.org/POT/epiphany.main/epiphany.main.zh_TW.po
-    // For help: https://l10n.gnome.org/POT/brasero.master/docs/brasero-help.master.zh_TW.po
-    //
-    // If the current translation is empty, templates that are set up beforehand
-    // are also available from eg.
-    // UI: https://l10n.gnome.org/module/po/epiphany/main/po/zh_TW.po
-    // or help: https://l10n.gnome.org/module/po/epiphany/main/help/zh_TW.po
-    // ...but I don't think we want this. Lokalize can handle creation just fine.
-    domain === "po"
-      ? `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.${language}.po`
-      : `https://l10n.gnome.org/POT/${module}.${branch}/docs/${module}-help.${branch}.${language}.po`,
-    { headers },
+  const res = await cached(
+    `gnome-${module}-${domain}-${language}`,
+    async () => {
+      const response = await fetch(
+        // For UI: https://l10n.gnome.org/POT/epiphany.main/epiphany.main.zh_TW.po
+        // For help: https://l10n.gnome.org/POT/brasero.master/docs/brasero-help.master.zh_TW.po
+        //
+        // If the current translation is empty, templates that are set up beforehand
+        // are also available from eg.
+        // UI: https://l10n.gnome.org/module/po/epiphany/main/po/zh_TW.po
+        // or help: https://l10n.gnome.org/module/po/epiphany/main/help/zh_TW.po
+        // ...but I don't think we want this. Lokalize can handle creation just fine.
+        domain === "po"
+          ? `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.${language}.po`
+          : `https://l10n.gnome.org/POT/${module}.${branch}/docs/${module}-help.${branch}.${language}.po`,
+        { headers },
+      );
+      if (response.status === 404) {
+        console.log(`Downloading ${language}/${domain}/${module} returned 404`);
+        // HACK: We haven't supported the fetcher "failing" in @kisaragi-hiu/cached-fetch...
+        return "";
+      }
+      return await response.text();
+    },
   );
-  if (res.status === 404) {
-    console.log(`Downloading ${language}/${domain}/${module} returned 404`);
+  if (res === "") {
     return;
   }
   // like zh_TW/po/epiphany.po or ja/help/epiphany.po
