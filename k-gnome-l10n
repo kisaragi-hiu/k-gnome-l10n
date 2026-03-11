@@ -143,7 +143,9 @@ program
     for (const lang of languages) {
       await initLokalize(lang);
     }
-    await $`git init && git add . && git commit -m before`;
+    await $({
+      cwd: process.cwd(),
+    })`git init && git add . && git commit -m before`;
     console.log(
       `Initialized workspace at ${dir}. Remember to fill in Lokalize info`,
     );
