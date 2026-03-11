@@ -340,16 +340,20 @@ async function downloadModuleTemplate(
 
   // For UI: https://l10n.gnome.org/POT/gnome-terminal.gtk3/gnome-terminal.gtk3.pot
   // For help: https://l10n.gnome.org/POT/brasero.master/docs/brasero-help.master.pot
-  const res = await fetch(
-    domain === "po"
-      ? `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.pot`
-      : `https://l10n.gnome.org/POT/${module}.${branch}/docs/${module}-help.${branch}.pot`,
-    { headers },
-  );
-  if (res.status === 404) {
-    console.log(`Downloading templates/${domain}/${module} returned 404`);
-    return;
-  }
+  const res = await cached(`gnome-${module}-${domain}-templates`, async () => {
+    const response = await fetch(
+      domain === "po"
+        ? `https://l10n.gnome.org/POT/${module}.${branch}/${module}.${branch}.pot`
+        : `https://l10n.gnome.org/POT/${module}.${branch}/docs/${module}-help.${branch}.pot`,
+      { headers },
+    );
+    if (response.status === 404) {
+      console.log(`Downloading templates/${domain}/${module} returned 404`);
+      // HACK: We haven't supported the fetcher "failing" in @kisaragi-hiu/cached-fetch...
+      return "";
+    }
+    return await response.text();
+  });
   write(`templates/${domain}/${module}.pot`, res);
 }
 
