@@ -1,4 +1,5 @@
 /** Commands for managing a local kdesvn repository checkout. */
+// deno-lint-ignore-file no-explicit-any
 
 import { existsSync, readFileSync } from "node:fs";
 import { writeFile, mkdir, rm } from "node:fs/promises";
@@ -9,9 +10,32 @@ import * as process from "node:process";
 import { cached } from "npm:@kisaragi-hiu/cached-fetch@0.2.0";
 import { $ } from "npm:zx@lite";
 import { program } from "npm:@commander-js/extra-typings@14.0.0";
-import { z } from "npm:zod@4.1.11";
+import { z, type ZodType } from "npm:zod@4.1.11";
 
 const headers = { "User-Agent": "github:kisaragi-hiu/k-gnome-l10n" };
+
+/** Return schema.parse(data) but with more readable errors. */
+function zodParseSaneError<O, I>(schema: ZodType<O, I>, data: unknown) {
+  const result = schema.safeParse(data);
+  if (result.success) {
+    return result.data;
+  } else {
+    const e = result.error;
+    throw new Error(
+      JSON.stringify(
+        e.issues.map((issue) => ({
+          message: issue.message,
+          path: issue.path.at(-1),
+          object: issue.path
+            .slice(0, -1)
+            .reduce((prev, curr) => (prev as any)[curr], data),
+        })),
+        null,
+        2,
+      ),
+    );
+  }
+}
 
 /**
  * Write a response or string to `path`.
@@ -256,8 +280,8 @@ async function getLanguages() {
   const text = await cached(`gnome-languages`, () =>
     fetch(`https://l10n.gnome.org/api/v1/languages/`, { headers }),
   );
-  return z
-    .array(
+  return zodParseSaneError(
+    z.array(
       z.object({
         name: z.string(),
         locale: z.string(),
@@ -265,8 +289,9 @@ async function getLanguages() {
         plurals: z.optional(z.string()),
         href: z.optional(z.string()),
       }),
-    )
-    .parse(JSON.parse(text));
+    ),
+    JSON.parse(text),
+  );
 }
 /** Return list of all language codes. */
 async function getLanguageCodes() {
