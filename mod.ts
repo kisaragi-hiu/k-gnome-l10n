@@ -1,7 +1,4 @@
-#!/usr/bin/env -S deno run -A
-// -*- mode: typescript; -*-
 /** Commands for managing a local kdesvn repository checkout. */
-// vim: ft=typescript
 
 import { existsSync, readFileSync } from "node:fs";
 import { writeFile, mkdir, rm } from "node:fs/promises";
@@ -398,4 +395,4 @@ program
     console.log(await getModule(module));
   });
 
-// await program.parseAsync();
+export { program };

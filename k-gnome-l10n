@@ -1,0 +1,5 @@
+#!/usr/bin/env -S deno run -A
+
+import { program } from "./mod.ts";
+
+await program.parseAsync();
