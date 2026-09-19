@@ -285,7 +285,7 @@ async function getLanguages() {
       z.object({
         name: z.string(),
         locale: z.string(),
-        team__description: z.string().nullish(),
+        team_description: z.string().nullable(),
         plurals: z.optional(z.string()),
         href: z.optional(z.string()),
       }),
