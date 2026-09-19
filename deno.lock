@@ -6,23 +6,30 @@
     "npm:@types/node@*": "24.2.0",
     "npm:ansi-escapes@7.1.1": "7.1.1",
     "npm:zod@4.1.11": "4.1.11",
-    "npm:zx@8.8.5": "8.8.5"
+    "npm:zx@8.8.5": "8.8.5",
+    "npm:zx@lite": "8.8.5-lite"
   },
   "npm": {
     "@commander-js/extra-typings@14.0.0_commander@14.0.2": {
       "integrity": "sha512-hIn0ncNaJRLkZrxBIp5AsW/eXEHNKYQBh0aPdoUqNgD+Io3NIykQqpKFyKcuasZhicGaEZJX/JBSIkZ4e5x8Dg==",
-      "dependencies": ["commander"]
+      "dependencies": [
+        "commander"
+      ]
     },
     "@kisaragi-hiu/cached-fetch@0.2.0": {
       "integrity": "sha512-8cA8ODJM5Jm6K68uxKwmlE0bCAeTWbMmffU7MWyeKoF+0n7P7qZOjXGXuspsTNSfK1PdJBR/FjPrPp/u8xVVvw=="
     },
     "@types/node@24.2.0": {
       "integrity": "sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==",
-      "dependencies": ["undici-types"]
+      "dependencies": [
+        "undici-types"
+      ]
     },
     "ansi-escapes@7.1.1": {
       "integrity": "sha512-Zhl0ErHcSRUaVfGUeUdDuLgpkEo8KIFjB4Y9uAc46ScOpdDiU1Dbyplh7qWJeJ/ZHpbyMSM26+X3BySgnIz40Q==",
-      "dependencies": ["environment"]
+      "dependencies": [
+        "environment"
+      ]
     },
     "commander@14.0.2": {
       "integrity": "sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ=="
@@ -39,6 +46,9 @@
     "zx@8.8.5": {
       "integrity": "sha512-SNgDF5L0gfN7FwVOdEFguY3orU5AkfFZm9B5YSHog/UDHv+lvmd82ZAsOenOkQixigwH2+yyH198AwNdKhj+RA==",
       "bin": true
+    },
+    "zx@8.8.5-lite": {
+      "integrity": "sha512-A/u82oc3sd9SZ46hig3NZKh5V1u0tXOwev5AK+3yH0zdqhiJmhd7NcWS0lq19RLOofagpDBS8K77aXLNAkBESQ=="
     }
   }
 }
